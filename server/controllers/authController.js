@@ -3,6 +3,9 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import resend from '../mailer.js'
 
+const isProduction = process.env.STAGE === 'production';
+console.log('STAGE:', process.env.STAGE);
+
 const login = async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -26,11 +29,11 @@ const login = async (req, res) => {
     res.cookie('token', token, {
         maxAge: 1000 * 60 * 60 * 24 * 7,
         httpOnly: true,
-        secure: process.env.STAGE === 'production',
-        sameSite: process.env.STAGE === 'production' ? 'strict' : 'lax',
+        secure: isProduction,
+        sameSite: isProduction ? 'strict' : 'lax'
     });
 
-    res.json({ success: true, message: 'Login successfully' });
+    res.json({ success: true, message: 'Login successfully', info: { name: user.name, email: user.email }, accountVerified: user.isAcVerified });
 }
 
 const signup = async (req, res) => {
@@ -60,10 +63,10 @@ const signup = async (req, res) => {
 
         // Set cookie
         res.cookie('token', token, {
-            maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+            maxAge: 1000 * 60 * 60 * 24 * 7,
             httpOnly: true,
-            secure: process.env.STAGE === 'production',
-            sameSite: process.env.STAGE === 'production' ? 'strict' : 'lax',
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax'
         });
 
         // Send confirmation email
@@ -76,7 +79,7 @@ const signup = async (req, res) => {
 
         try {
             const info = await resend.emails.send(mailOptions);
-            console.log('Confirmation email sent:', info.messageId);
+            console.log('Confirmation email sent:', info.data.id);
             await user.save();
             // Final response
             res.status(201).json({
@@ -95,7 +98,17 @@ const signup = async (req, res) => {
     }
 };
 
-const isAuth = async (req, res) => {
+const logout = async (req, res) => {
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'strict' : 'lax',
+        path: '/'
+    });
+    res.status(200).json({ success: true, message: 'Logout successful' });
+}
+
+const isAcVerified = async (req, res) => {
     const { userId } = req.user
     const user = await userModel.findById(userId)
     if (user.isAcVerified === true) {
@@ -105,11 +118,32 @@ const isAuth = async (req, res) => {
     }
 }
 
+const isUserLoggedIn = async (req, res) => {
+    try {
+        const { userId } = req.user;
+
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized: Missing user ID' });
+        }
+
+        const user = await userModel.findById(userId);
+
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'User not found. Please login again.' });
+        }
+
+        res.status(200).json({ success: true, message: 'Account is authenticated.', info: { name: user.name, email: user.email }, accountVerified: user.isAcVerified });
+    } catch (error) {
+        console.error('Error checking user login:', error);
+        res.status(500).json({ success: false, message: 'Server error. Please try again later.' });
+    }
+};
+
 const sendVerifyEmail = async (req, res) => {
     const { userId } = req.user
 
     const user = await userModel.findById(userId)
-    const otp = Math.floor(Math.random() * 9999)
+    const otp = Math.floor(1000 + Math.random() * 9000);
 
     user.verifiyOtp = otp
     user.verifyOtpExpirtat = Date.now() + 1000 * 60 * 60 * 24
@@ -124,8 +158,7 @@ const sendVerifyEmail = async (req, res) => {
 
     try {
         const info = await resend.emails.send(mailOptions);
-        console.log(info)
-        res.json({ sucess: true, message: 'Verifcation Mail sent to your Email Successfully' })
+        res.json({ success: true, message: 'Verifcation Mail sent to your Email Successfully' })
     } catch (error) {
         console.log({ success: false, message: 'SMTP error', error: error.message })
     }
@@ -154,11 +187,7 @@ const verifyOtp = async (req, res) => {
 
     user.isAcVerified = true;
     user.verifyOtpExpirtat = 0;
-    user.verifiyOtp = ''; // fixed typo (was `verifiyOtp`)
-
-    res.cookie({
-
-    })
+    user.verifiyOtp = '';
 
     const mailOptions = {
         from: 'onboarding@resend.dev',
@@ -191,7 +220,7 @@ const sendResetOTP = async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        const otp = Math.floor(Math.random() * 9999);
+        const otp = Math.floor(1000 + Math.random() * 9000);
         const otpExpiry = Date.now() + 15 * 60 * 1000; // 5 minutes from now
 
         // Save OTP and expiry in user document
@@ -211,12 +240,12 @@ const sendResetOTP = async (req, res) => {
 
         const token = jwt.sign({ userId: user._id }, process.env.JWT_KEY, { expiresIn: '7d' });
 
-        res.cookie('token', token, {
-            maxAge: 1000 * 60 * 60 * 24 * 7,
-            httpOnly: true,
-            secure: process.env.STAGE === 'production',
-            sameSite: process.env.STAGE === 'production' ? 'strict' : 'lax',
-        });
+        // res.cookie('token', token, {
+        //     maxAge: 1000 * 60 * 60 * 24 * 7,
+        //     httpOnly: true,
+        //     secure: isProduction,
+        //     sameSite: isProduction ? 'strict' : 'lax'
+        // });
 
         return res.status(200).json({
             success: true,
@@ -230,14 +259,14 @@ const sendResetOTP = async (req, res) => {
 }
 
 const verifyResetOTP = async (req, res) => {
-    const { userId } = req.user
-    const { otp, password } = req.body
-
-    if (!userId || !otp || !password) {
+    const { email, otp, newPassword } = req.body
+    console.log(req.body)
+    if (!email || !otp || !newPassword) {
+        console.log('hi')
         return res.json({ success: false, message: 'fields cannot be empty' })
     }
 
-    const user = await userModel.findById(userId)
+    const user = await userModel.findOne({ email })
 
     if (!user) {
         return res.json({ success: false, message: 'user not found.' })
@@ -251,7 +280,7 @@ const verifyResetOTP = async (req, res) => {
         return res.json({ success: false, message: 'incorrect OTP.' })
     }
 
-    const hashPassword = await bcrypt.hash(password, 10)
+    const hashPassword = await bcrypt.hash(newPassword, 10)
 
     user.resetPwdOTP = '';
     user.resetOtpVerifyat = 0
@@ -277,5 +306,4 @@ const verifyResetOTP = async (req, res) => {
 }
 
 
-
-export { login, signup, isAuth, sendVerifyEmail, verifyOtp, sendResetOTP, verifyResetOTP }
+export { login, signup, logout, isAcVerified, isUserLoggedIn, sendVerifyEmail, verifyOtp, sendResetOTP, verifyResetOTP }

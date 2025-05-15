@@ -8,9 +8,9 @@
     position: relative;
     height: 100vh;
     overflow: hidden;
-    background: linear-gradient(-45deg, #2193b0, #6dd5ed);
+    background: linear-gradient(-45deg, #3c0d00, #3c3600, #1e3c00, #15003c, #3c0016);
     background-size: 400% 400%;
-    animation: gradientMove 20s ease infinite;
+    animation: gradientMove 15s ease infinite;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -137,4 +137,23 @@
         transform: translateY(-1000px) scale(1.5);
         opacity: 0;
     }
+}
+
+@keyframes rainbow {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.animate-rainbow {
+    background-size: 300% 300%;
+    animation: rainbow 4s ease infinite;
 }

@@ -6,14 +6,16 @@ import cookieParser from 'cookie-parser'
 import authRouter from './routes/authRoutes.js'
 const app = express()
 
+const PORT = process.env.PORT || 4000
 
-const PORT = process.env.PORT || 4040
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+}))
 
-app.use(cors())
 app.use(cookieParser())
 app.use(express.json())
-app.use(express.urlencoded())
-
+// app.use(express.urlencoded({ extended: true }))
 
 app.use((req, res, next) => {
     console.log(req.url, req.method)
@@ -22,7 +24,10 @@ app.use((req, res, next) => {
 
 app.use('/auth', authRouter)
 
-connectDb().then(() => {
-    app.listen(PORT, () => console.log(`The Server is running on http://localhost:${PORT}`))
+app.use((err, req, res, next) => {
+    res.json({ success: false, message: 'Page Not Found' })
 })
 
+connectDb().then(() => {
+    app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`))
+})

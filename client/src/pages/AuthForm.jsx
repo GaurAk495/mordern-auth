@@ -1,9 +1,23 @@
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Mail, Lock, User, RotateCcw } from "lucide-react";
+import axios from "axios";
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import { AppContext } from "../components/AppContext";
 
 function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
   const [isReset, setIsReset] = useState(false);
+  const navigate = useNavigate();
+
+  const { setUserLoggedIn, isUserLoggedIn, setUserInfo, setVerified } =
+    useContext(AppContext);
+
+  useEffect(() => {
+    if (isUserLoggedIn) {
+      navigate("/");
+    }
+  }, [isUserLoggedIn]);
 
   const toggleForm = () => {
     setIsReset(false);
@@ -12,13 +26,49 @@ function AuthForm() {
 
   const toggleReset = () => {
     setIsReset(true);
+    setIsLogin(false);
   };
 
-  const handleOnSubmit = (e) => {
+  const handleOnSubmit = async (e) => {
     e.preventDefault();
     const formMap = new FormData(e.target);
     const formObj = Object.fromEntries(formMap);
-    console.log(formObj);
+    const path = isLogin
+      ? "auth/login"
+      : isReset
+      ? "auth/reset-password"
+      : "auth/signup";
+    try {
+      const res = await axios.post(
+        import.meta.env.VITE_BACKEND + path,
+        formObj,
+        { withCredentials: true }
+      );
+      const { success, message, info, accountVerified } = res.data;
+
+      if (!success) {
+        toast.error(message);
+      } else {
+        toast.success(message);
+        if (isLogin) {
+          setTimeout(() => {
+            console.log("hi");
+            setUserLoggedIn(true);
+            setUserInfo(info);
+            setVerified(accountVerified);
+            navigate("/");
+          }, 2000);
+        } else if (isReset) {
+          navigate("/reset-password", { state: { email: formObj.email } });
+        } else {
+          setTimeout(() => {
+            setIsLogin(true);
+          }, 1000);
+        }
+      }
+    } catch (error) {
+      toast.error(error.response.data.message);
+    }
   };
 
   return (
@@ -40,7 +90,7 @@ function AuthForm() {
                 type="text"
                 placeholder="Full Name"
                 className="bg-transparent w-full outline-none placeholder-white"
-                name="fullName"
+                name="name"
               />
             </div>
           )}
@@ -69,7 +119,7 @@ function AuthForm() {
 
           <button
             type="submit"
-            className="w-full bg-white text-blue-700 font-semibold py-2 rounded-lg hover:bg-gray-100 transition"
+            className="w-full bg-white text-blue-700 font-semibold py-2 rounded-lg hover:bg-gray-100 transition cursor-pointer"
           >
             {isReset ? "Send Reset Link" : isLogin ? "Login" : "Sign Up"}
           </button>
@@ -80,7 +130,7 @@ function AuthForm() {
           <div className="mt-4 text-sm flex justify-between">
             <button
               onClick={toggleReset}
-              className="text-white hover:underline flex items-center"
+              className="text-white hover:underline flex items-center cursor-pointer"
             >
               <RotateCcw className="w-4 h-4 mr-1" />
               Forgot Password?
@@ -98,10 +148,11 @@ function AuthForm() {
             </button>
           ) : (
             <>
-              {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
+              {isLogin ? "Don't have an account?" : "Already have an account?"}
+              {"  "}
               <button
                 onClick={toggleForm}
-                className="text-white hover:underline font-medium"
+                className="text-white hover:underline font-medium cursor-pointer"
               >
                 {isLogin ? "Sign up" : "Login"}
               </button>

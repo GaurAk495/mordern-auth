@@ -2,9 +2,10 @@ import userModel from '../model/userModel.js'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import resend from '../mailer.js'
+import { tempMail, accountcreated, verificationOTPsent, acVerSuccess, resetOTPsent, resetPassSuccess } from '../utils/mailtemplate.js'
 
 const isProduction = process.env.STAGE === 'production';
-console.log('STAGE:', process.env.STAGE);
+// console.log('STAGE:', process.env.STAGE);
 
 const login = async (req, res) => {
     const { email, password } = req.body;
@@ -74,7 +75,7 @@ const signup = async (req, res) => {
             from: 'onboarding@resend.dev',
             to: user.email,
             subject: 'Account Created Successfully',
-            html: `<h2>Welcome, ${user.name}!</h2><p>Your account has been created successfully.</p>`,
+            html: tempMail(accountcreated).replace(`{{name}}`, user.name)
         };
 
         try {
@@ -153,7 +154,7 @@ const sendVerifyEmail = async (req, res) => {
         from: 'onboarding@resend.dev',
         to: user.email,
         subject: "Verification OTP Send Successfully",
-        html: `<strong>Your OTP for Verifying the Email is ${otp}<strong>`
+        html: tempMail(verificationOTPsent).replace(`{{otp}}`, otp)
     };
 
     try {
@@ -193,7 +194,7 @@ const verifyOtp = async (req, res) => {
         from: 'onboarding@resend.dev',
         to: user.email,
         subject: 'Account Verified Successfully',
-        html: `<strong>Account Verified Successfully</strong>`
+        html: tempMail(acVerSuccess)
     };
 
     try {
@@ -233,7 +234,7 @@ const sendResetOTP = async (req, res) => {
             from: 'onboarding@resend.dev',
             to: user.email,
             subject: 'Reset Password OTP',
-            html: `<h2>Password Reset</h2><p>Your OTP is <strong>${otp}</strong>. It will expire in 15 minutes.</p>`
+            html: tempMail(resetOTPsent).replace(`{{otp}}`, otp)
         };
 
         await resend.emails.send(mailOptions);
@@ -283,7 +284,7 @@ const verifyResetOTP = async (req, res) => {
         from: 'onboarding@resend.dev',
         to: user.email,
         subject: 'Hello World',
-        html: '<p>Password Reset Successfully</p>'
+        html: tempMail(resetPassSuccess)
     }
 
     try {

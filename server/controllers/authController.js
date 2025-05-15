@@ -102,7 +102,7 @@ const logout = async (req, res) => {
     res.clearCookie('token', {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'strict' : 'lax',
+        sameSite: isProduction ? 'none' : 'strict',
         path: '/'
     });
     res.status(200).json({ success: true, message: 'Logout successful' });

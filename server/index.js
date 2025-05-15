@@ -8,8 +8,9 @@ const app = express()
 
 const PORT = process.env.PORT || 4000
 
+console.log(process.env.FRONT_URL)
 app.use(cors({
-    origin: process.env.Front_END,
+    origin: process.env.FRONT_URL,
     credentials: true,
 }))
 
@@ -29,5 +30,5 @@ app.use((err, req, res, next) => {
 })
 
 connectDb().then(() => {
-    app.listen(PORT, () => console.log(`Server running on ${process.env.BackEND_URL}:${PORT}`))
+    app.listen(PORT, () => console.log(`Server running on ${process.env.BACKEND_URL}:${PORT}`))
 })

@@ -30,7 +30,7 @@ const login = async (req, res) => {
         maxAge: 1000 * 60 * 60 * 24 * 7,
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'strict' : 'lax'
+        sameSite: isProduction ? 'none' : 'lax'
     });
 
     res.json({ success: true, message: 'Login successfully', info: { name: user.name, email: user.email }, accountVerified: user.isAcVerified });
@@ -66,7 +66,7 @@ const signup = async (req, res) => {
             maxAge: 1000 * 60 * 60 * 24 * 7,
             httpOnly: true,
             secure: isProduction,
-            sameSite: isProduction ? 'strict' : 'lax'
+            sameSite: isProduction ? 'none' : 'lax'
         });
 
         // Send confirmation email
@@ -239,13 +239,6 @@ const sendResetOTP = async (req, res) => {
         await resend.emails.send(mailOptions);
 
         const token = jwt.sign({ userId: user._id }, process.env.JWT_KEY, { expiresIn: '7d' });
-
-        // res.cookie('token', token, {
-        //     maxAge: 1000 * 60 * 60 * 24 * 7,
-        //     httpOnly: true,
-        //     secure: isProduction,
-        //     sameSite: isProduction ? 'strict' : 'lax'
-        // });
 
         return res.status(200).json({
             success: true,
